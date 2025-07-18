@@ -1,0 +1,7 @@
+,total_companies,has_balance_sheet,has_quarterly_balance_sheet,has_both,key_metrics,coverage_pct
+2025,155582,155582,153563,153563,"defaultdict(<class 'int'>, {'Total Assets': 155582, 'Current Assets': 152108, 'Current Liabilities': 152108, 'Total Debt': 154217})",100.00
+2024,168638,168638,163003,163003,"defaultdict(<class 'int'>, {'Total Assets': 168638, 'Current Assets': 165109, 'Current Liabilities': 165109, 'Total Debt': 167147})",100.00
+2023,172040,172040,165016,165016,"defaultdict(<class 'int'>, {'Total Assets': 172040, 'Current Assets': 168459, 'Current Liabilities': 168459, 'Total Debt': 170549})",100.00
+2022,172001,172001,164482,164482,"defaultdict(<class 'int'>, {'Total Assets': 172001, 'Current Assets': 168420, 'Current Liabilities': 168420, 'Total Debt': 170510})",100.00
+2021,168411,168411,160945,160945,"defaultdict(<class 'int'>, {'Total Assets': 168411, 'Current Assets': 164926, 'Current Liabilities': 164926, 'Total Debt': 166920})",100.00
+2020,1630,1630,1630,1630,"defaultdict(<class 'int'>, {'Total Assets': 1630, 'Current Assets': 1630, 'Current Liabilities': 1630, 'Total Debt': 1630})",100.00

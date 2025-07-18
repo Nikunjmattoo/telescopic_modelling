@@ -1,0 +1,63 @@
+2025-07-13 18:11:46,327 - INFO - Starting options data download...
+2025-07-13 18:11:46,328 - INFO - Loaded 2853 tickers from c:/Projects/equity_allocator/tickers_master.txt
+2025-07-13 18:11:46,343 - INFO - Processing ticker 1/2853: 20MICRONS
+2025-07-13 18:11:48,452 - WARNING - No options data available for 20MICRONS
+2025-07-13 18:11:48,453 - INFO - Successfully processed 20MICRONS (1/2853)
+2025-07-13 18:11:48,453 - INFO - Processing ticker 2/2853: 21STCENMGM
+2025-07-13 18:11:49,535 - WARNING - No options data available for 21STCENMGM
+2025-07-13 18:11:49,536 - INFO - Successfully processed 21STCENMGM (2/2853)
+2025-07-13 18:11:49,537 - INFO - Processing ticker 3/2853: 360ONE
+2025-07-13 18:11:50,615 - WARNING - No options data available for 360ONE
+2025-07-13 18:11:50,616 - INFO - Successfully processed 360ONE (3/2853)
+2025-07-13 18:11:50,616 - INFO - Processing ticker 4/2853: 3IINFOLTD
+2025-07-13 18:11:51,698 - WARNING - No options data available for 3IINFOLTD
+2025-07-13 18:11:51,699 - INFO - Successfully processed 3IINFOLTD (4/2853)
+2025-07-13 18:11:51,699 - INFO - Processing ticker 5/2853: 3MINDIA
+2025-07-13 18:11:52,785 - WARNING - No options data available for 3MINDIA
+2025-07-13 18:11:52,786 - INFO - Successfully processed 3MINDIA (5/2853)
+2025-07-13 18:11:52,786 - INFO - Processing ticker 6/2853: 3PLAND
+2025-07-13 18:11:53,866 - WARNING - No options data available for 3PLAND
+2025-07-13 18:11:53,867 - INFO - Successfully processed 3PLAND (6/2853)
+2025-07-13 18:11:53,867 - INFO - Processing ticker 7/2853: 563GS2026
+2025-07-13 18:11:54,948 - WARNING - No options data available for 563GS2026
+2025-07-13 18:11:54,950 - INFO - Successfully processed 563GS2026 (7/2853)
+2025-07-13 18:11:54,950 - INFO - Processing ticker 8/2853: 574GS2026
+2025-07-13 18:11:56,028 - WARNING - No options data available for 574GS2026
+2025-07-13 18:11:56,029 - INFO - Successfully processed 574GS2026 (8/2853)
+2025-07-13 18:11:56,030 - INFO - Processing ticker 9/2853: 5PAISA
+2025-07-13 18:11:57,119 - WARNING - No options data available for 5PAISA
+2025-07-13 18:11:57,121 - INFO - Successfully processed 5PAISA (9/2853)
+2025-07-13 18:11:57,122 - INFO - Processing ticker 10/2853: 610GS2031
+2025-07-13 18:11:58,201 - WARNING - No options data available for 610GS2031
+2025-07-13 18:11:58,202 - INFO - Successfully processed 610GS2031 (10/2853)
+2025-07-13 18:11:58,203 - INFO - Processing ticker 11/2853: 619GS2034
+2025-07-13 18:11:59,281 - WARNING - No options data available for 619GS2034
+2025-07-13 18:11:59,282 - INFO - Successfully processed 619GS2034 (11/2853)
+2025-07-13 18:11:59,283 - INFO - Processing ticker 12/2853: 633GS2035
+2025-07-13 18:12:00,365 - WARNING - No options data available for 633GS2035
+2025-07-13 18:12:00,367 - INFO - Successfully processed 633GS2035 (12/2853)
+2025-07-13 18:12:00,367 - INFO - Processing ticker 13/2853: 63MOONS
+2025-07-13 18:12:01,512 - WARNING - No options data available for 63MOONS
+2025-07-13 18:12:01,514 - INFO - Successfully processed 63MOONS (13/2853)
+2025-07-13 18:12:01,514 - INFO - Processing ticker 14/2853: 667GS2035
+2025-07-13 18:12:02,602 - WARNING - No options data available for 667GS2035
+2025-07-13 18:12:02,604 - INFO - Successfully processed 667GS2035 (14/2853)
+2025-07-13 18:12:02,605 - INFO - Processing ticker 15/2853: 667GS2050
+2025-07-13 18:12:03,756 - WARNING - No options data available for 667GS2050
+2025-07-13 18:12:03,757 - INFO - Successfully processed 667GS2050 (15/2853)
+2025-07-13 18:12:03,758 - INFO - Processing ticker 16/2853: 676GS2061
+2025-07-13 18:12:04,844 - WARNING - No options data available for 676GS2061
+2025-07-13 18:12:04,846 - INFO - Successfully processed 676GS2061 (16/2853)
+2025-07-13 18:12:04,847 - INFO - Processing ticker 17/2853: 679GS2034
+2025-07-13 18:12:05,925 - WARNING - No options data available for 679GS2034
+2025-07-13 18:12:05,926 - INFO - Successfully processed 679GS2034 (17/2853)
+2025-07-13 18:12:05,927 - INFO - Processing ticker 18/2853: 679GS2034A
+2025-07-13 18:12:07,006 - WARNING - No options data available for 679GS2034A
+2025-07-13 18:12:07,007 - INFO - Successfully processed 679GS2034A (18/2853)
+2025-07-13 18:12:07,008 - INFO - Processing ticker 19/2853: 692GS2039
+2025-07-13 18:12:08,087 - WARNING - No options data available for 692GS2039
+2025-07-13 18:12:08,089 - INFO - Successfully processed 692GS2039 (19/2853)
+2025-07-13 18:12:08,089 - INFO - Processing ticker 20/2853: 695GS2061
+2025-07-13 18:12:09,169 - WARNING - No options data available for 695GS2061
+2025-07-13 18:12:09,171 - INFO - Successfully processed 695GS2061 (20/2853)
+2025-07-13 18:12:09,171 - INFO - Processing ticker 21/2853: 698GR2054
