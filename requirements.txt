@@ -1,3 +1,9 @@
 psycopg[binary]==3.2.9
 python-dotenv==1.0.0
 requests==2.31.0
+pandas
+yfinance
+tqdm
+sqlalchemy
+psycopg[binary]
+python-dotenv

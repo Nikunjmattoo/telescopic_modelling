@@ -1,4 +1,3 @@
-
 import sys
 from pathlib import Path
 from datetime import datetime, date
@@ -9,7 +8,6 @@ import numpy as np
 sys.path.append(str(Path(__file__).parent.parent))
 from db_utils import DatabaseConnection
 
-
 class CompositeSignalCalculator:
     def __init__(self):
         self.db = DatabaseConnection()
@@ -17,15 +15,11 @@ class CompositeSignalCalculator:
         self.quarter_ends = self.generate_quarter_ends()
 
     def generate_quarter_ends(self) -> List[date]:
-        quarter_ends = []
-        for year in range(2015, datetime.today().year + 1):
-            quarter_ends.extend([
-                date(year, 3, 31),
-                date(year, 6, 30),
-                date(year, 9, 30),
-                date(year, 12, 31)
-            ])
-        return quarter_ends
+        return [
+            date(year, m, d)
+            for year in range(2015, datetime.today().year + 1)
+            for (m, d) in [(3, 31), (6, 30), (9, 30), (12, 31)]
+        ]
 
     def get_composite_inputs(self, as_of_date: date) -> List[Tuple]:
         with self.connection.cursor() as cur:
@@ -39,8 +33,7 @@ class CompositeSignalCalculator:
                     f.eps_growth,
                     f.revenue_growth,
                     f.roe,
-                    f.net_margin,
-                    f.fcf_margin
+                    f.net_margin
                 FROM valuation_signals v
                 JOIN momentum_signals m ON v.ticker = m.ticker AND v.as_of_date = m.as_of_date
                 JOIN fundamental_scores f ON v.ticker = f.ticker AND v.as_of_date = f.as_of_date
@@ -79,18 +72,16 @@ class CompositeSignalCalculator:
         tickers = []
         feature_keys = [
             "valuation_signal", "momentum_3m", "momentum_6m", "momentum_12m",
-            "eps_growth", "revenue_growth", "roe", "net_margin", "fcf_margin"
+            "eps_growth", "revenue_growth", "roe", "net_margin"
         ]
         features = {key: [] for key in feature_keys}
 
-        valid_indices = []
-        for i, row in enumerate(raw_records):
+        for row in raw_records:
             if None in row[1:]:
                 continue
             tickers.append(row[0])
             for j, key in enumerate(feature_keys):
-                features[key].append(float(row[j + 1]))  # convert Decimal to float
-            valid_indices.append(i)
+                features[key].append(float(row[j + 1]))
 
         if not tickers:
             return 0
@@ -104,7 +95,6 @@ class CompositeSignalCalculator:
                 z["revenue_growth"][i] +
                 z["roe"][i] +
                 z["net_margin"][i] +
-                z["fcf_margin"][i] +
                 z["momentum_3m"][i] +
                 z["momentum_6m"][i] +
                 z["momentum_12m"][i] -
@@ -132,14 +122,12 @@ class CompositeSignalCalculator:
                 print(f"Error processing {qend}: {e}")
         print(f"[OK] Completed. Total composite signals saved: {total}")
 
-
 def main():
     try:
         calc = CompositeSignalCalculator()
         calc.process_all()
     except Exception as e:
         print("[ERROR]", str(e))
-
 
 if __name__ == "__main__":
     main()

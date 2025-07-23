@@ -1,248 +1,220 @@
-"""
-derived_metrics.py
-
-This module handles the derivation of metrics for the derived_metrics table.
-It processes raw data from various sources to calculate derived financial metrics.
-"""
-
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any, Optional
-import psycopg
+from typing import List, Dict, Any, Tuple
+from collections import defaultdict
 from tqdm import tqdm
 
-# Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 from db_utils import DatabaseConnection
 
-class DerivedMetricsCalculator:
-    """Handles calculation and storage of derived financial metrics."""
-    
-    def __init__(self):
-        """Initialize the calculator with database connection."""
-        self.db = DatabaseConnection()
-        self.db.connection = self.db.connect()  # Explicitly connect
-    
-    def get_tickers(self) -> List[str]:
-        """Get list of all unique tickers from source tables."""
-        cur = self.db.connection.cursor()
-        try:
-            cur.execute("""
-                SELECT DISTINCT ticker FROM (
-                    SELECT ticker FROM income_statement_annual
-                    UNION
-                    SELECT ticker FROM balance_sheet_annual
-                    UNION
-                    SELECT ticker FROM cash_flow_annual
-                ) t
-                ORDER BY ticker
-            """)
-            return [row[0] for row in cur.fetchall()]  # Access by index instead of name
-        finally:
-            cur.close()
-    
-    def calculate_metrics(self, ticker: str) -> List[Dict[str, Any]]:
-        """
-        Calculate derived metrics for a single ticker.
-        
-        Args:
-            ticker: Stock ticker symbol
-            
-        Returns:
-            List of metric records to be inserted
-        """
-        cur = self.db.connection.cursor()
-        try:
-            # Get all required data in a single query
-            cur.execute("""
-                SELECT 
-                    i.period_ending,
-                    i.diluted_eps,
-                    i.total_revenue,
-                    i.net_income,
-                    i.operating_income,
-                    b.stockholders_equity,
-                    b.total_assets,
-                    b.total_debt,
-                    b.current_assets,
-                    b.current_liabilities,
-                    c.operating_cash_flow,
-                    c.free_cash_flow,
-                    c.dividends_paid
-                FROM income_statement_annual i
-                LEFT JOIN balance_sheet_annual b 
-                    ON i.ticker = b.ticker AND i.period_ending = b.period_ending
-                LEFT JOIN cash_flow_annual c
-                    ON i.ticker = c.ticker AND i.period_ending = c.period_ending
-                WHERE i.ticker = %s
-                ORDER BY i.period_ending
-            """, (ticker,))
-            
-            rows = cur.fetchall()
-            if not rows:
-                return []
-                
-            # Prepare metrics for insertion
-            metrics = []
-            for row in rows:
-                # Skip if any required field is missing
-                if any(field is None for field in row):
-                    continue
-                
-                # Map columns by position
-                (
-                    period_ending,
-                    diluted_eps,
-                    total_revenue,
-                    net_income,
-                    operating_income,
-                    stockholders_equity,
-                    total_assets,
-                    total_debt,
-                    current_assets,
-                    current_liabilities,
-                    operating_cash_flow,
-                    free_cash_flow,
-                    dividends_paid
-                ) = row
-                    
-                # For March 31st year-end, fiscal year is previous calendar year
-                # e.g., March 31, 2023 → FY22 (2022-23)
-                fiscal_year = period_ending.year - 1
-                
-                metrics.append({
-                    'ticker': ticker,
-                    'fiscal_year': fiscal_year,
-                    'period_ending': period_ending,
-                    'eps': diluted_eps,
-                    'revenue': total_revenue,
-                    'net_income': net_income,
-                    'operating_income': operating_income,
-                    'stockholders_equity': stockholders_equity,
-                    'total_assets': total_assets,
-                    'total_debt': total_debt,
-                    'current_assets': current_assets,
-                    'current_liabilities': current_liabilities,
-                    'operating_cash_flow': operating_cash_flow,
-                    'free_cash_flow': free_cash_flow,
-                    'dividends_paid': dividends_paid,
-                    'last_updated': datetime.now()
-                })
-            
-            return metrics
-        finally:
-            cur.close()
-    
-    def save_metrics(self, metrics: List[Dict[str, Any]]) -> int:
-        """
-        Save calculated metrics to the database.
-        Following the same pattern as extract_cashflow_quarterly.py
-        """
-        if not metrics:
-            return 0
-            
-        conn = self.db.connection
-        cur = conn.cursor()
-        inserted = 0
-        
-        try:
-            data = []
-            for m in metrics:
-                # Convert metric dict to tuple in the correct order
-                row = (
-                    m['ticker'],
-                    m['fiscal_year'],  # Using fiscal_year instead of period_ending for the second column
-                    m['eps'],
-                    m['revenue'],
-                    m['net_income'],
-                    m['operating_income'],
-                    m['stockholders_equity'],
-                    m['total_assets'],
-                    m['total_debt'],
-                    m['current_assets'],
-                    m['current_liabilities'],
-                    m['operating_cash_flow'],
-                    m['free_cash_flow'],
-                    m['dividends_paid'],
-                    m['period_ending']  # Adding period_ending as the last column
-                )
-                data.append(row)
-            
-            # Use executemany with ON CONFLICT for upsert
-            cur.executemany("""
-                INSERT INTO derived_metrics (
-                    ticker, fiscal_year,
-                    eps, revenue, net_income, operating_income,
-                    stockholders_equity, total_assets, total_debt,
-                    current_assets, current_liabilities,
-                    operating_cash_flow, free_cash_flow, dividends_paid,
-                    period_ending, last_updated
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (ticker, fiscal_year) DO UPDATE SET
-                    eps = EXCLUDED.eps,
-                    revenue = EXCLUDED.revenue,
-                    net_income = EXCLUDED.net_income,
-                    operating_income = EXCLUDED.operating_income,
-                    stockholders_equity = EXCLUDED.stockholders_equity,
-                    total_assets = EXCLUDED.total_assets,
-                    total_debt = EXCLUDED.total_debt,
-                    current_assets = EXCLUDED.current_assets,
-                    current_liabilities = EXCLUDED.current_liabilities,
-                    operating_cash_flow = EXCLUDED.operating_cash_flow,
-                    free_cash_flow = EXCLUDED.free_cash_flow,
-                    dividends_paid = EXCLUDED.dividends_paid,
-                    last_updated = EXCLUDED.last_updated
-            """, data)
-            
-            inserted = cur.rowcount
-            conn.commit()
-            return inserted
-            
-        except Exception as e:
-            conn.rollback()
-            print(f"Error saving metrics: {str(e)}")
-            raise
-            
-        finally:
-            cur.close()
-    
-    def process_all_tickers(self):
-        """Process all tickers and save derived metrics."""
-        tickers = self.get_tickers()
-        total_processed = 0
-        
-        with tqdm(tickers, desc="Processing tickers") as pbar:
-            for ticker in pbar:
-                try:
-                    metrics = self.calculate_metrics(ticker)
-                    if metrics:
-                        count = self.save_metrics(metrics)
-                        total_processed += count
-                        pbar.set_postfix({"Processed": f"{total_processed} records"})
-                except Exception as e:
-                    print(f"\nError processing {ticker}: {str(e)}")
-                    continue
-        
-        return total_processed
 
-def main():
-    """Main function to run the metrics calculation."""
-    try:
-        print("Starting derived metrics calculation...")
-        calculator = DerivedMetricsCalculator()
-        print("Successfully initialized calculator")
-        print(f"Database connection: {calculator.db.connection}")
-        total = calculator.process_all_tickers()
-        print(f"\nCompleted! Processed {total} records in total.")
-    except Exception as e:
-        import traceback
-        print(f"Error in main: {str(e)}")
-        print("\nStack trace:")
-        traceback.print_exc()
-        return 1
-    return 0
+REQUIRED_FIELDS = ["diluted_eps", "total_revenue"]
+
+class DerivedMetricsPipeline:
+    def __init__(self):
+        self.db = DatabaseConnection()
+        self.conn = self.db.connect()
+
+    def backup_table(self):
+        with self.conn.cursor() as cur:
+            print("[INFO] Backing up derived_metrics table...")
+            cur.execute("DROP TABLE IF EXISTS derived_metrics_backup;")
+            cur.execute("CREATE TABLE derived_metrics_backup AS SELECT * FROM derived_metrics;")
+            self.conn.commit()
+
+    def fetch_annual_data(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        cur = self.conn.cursor()
+        data = defaultdict(lambda: defaultdict(dict))
+
+        cur.execute("""SELECT ticker, period_ending, diluted_eps, total_revenue, net_income, operating_income FROM income_statement_annual""")
+        for row in cur.fetchall():
+            t, pe, eps, rev, ni, op = row
+            d = data[t][pe]
+            d['diluted_eps'] = eps
+            d['total_revenue'] = rev
+            d['net_income'] = ni
+            d['operating_income'] = op
+
+        cur.execute("""SELECT ticker, period_ending, stockholders_equity, total_assets, total_debt, current_assets, current_liabilities FROM balance_sheet_annual""")
+        for row in cur.fetchall():
+            t, pe, se, ta, td, ca, cl = row
+            d = data[t][pe]
+            d['stockholders_equity'] = se
+            d['total_assets'] = ta
+            d['total_debt'] = td
+            d['current_assets'] = ca
+            d['current_liabilities'] = cl
+
+        cur.execute("""SELECT ticker, period_ending, operating_cash_flow, free_cash_flow, dividends_paid FROM cash_flow_annual""")
+        for row in cur.fetchall():
+            t, pe, ocf, fcf, div = row
+            d = data[t][pe]
+            d['operating_cash_flow'] = ocf
+            d['free_cash_flow'] = fcf
+            d['dividends_paid'] = div
+
+        cur.close()
+        return data
+
+    def compute_fiscal_year(self, pe: datetime) -> int:
+        return pe.year - 1 if pe.month == 3 and pe.day == 31 else pe.year
+
+    def recreate_table(self):
+        cur = self.conn.cursor()
+        cur.execute("DROP TABLE IF EXISTS derived_metrics;")
+        cur.execute("""
+            CREATE TABLE derived_metrics (
+                ticker TEXT,
+                fiscal_year INT,
+                eps NUMERIC,
+                revenue NUMERIC,
+                net_income NUMERIC,
+                operating_income NUMERIC,
+                stockholders_equity NUMERIC,
+                total_assets NUMERIC,
+                total_debt NUMERIC,
+                current_assets NUMERIC,
+                current_liabilities NUMERIC,
+                operating_cash_flow NUMERIC,
+                free_cash_flow NUMERIC,
+                dividends_paid NUMERIC,
+                period_ending DATE,
+                eps_cagr_2y NUMERIC,
+                target_pe NUMERIC,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (ticker, fiscal_year)
+            );
+        """)
+        self.conn.commit()
+        cur.close()
+
+    def insert_data(self, rows: List[Tuple]):
+        cur = self.conn.cursor()
+        cur.executemany("""
+            INSERT INTO derived_metrics (
+                ticker, fiscal_year,
+                eps, revenue, net_income, operating_income,
+                stockholders_equity, total_assets, total_debt,
+                current_assets, current_liabilities,
+                operating_cash_flow, free_cash_flow, dividends_paid,
+                period_ending, last_updated
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        """, rows)
+        self.conn.commit()
+        cur.close()
+
+    def build_metrics(self) -> int:
+        data = self.fetch_annual_data()
+        rows, skipped = [], []
+        for ticker, recs in tqdm(data.items(), desc="Processing records"):
+            for pe, vals in recs.items():
+                if not all(vals.get(k) is not None for k in REQUIRED_FIELDS):
+                    skipped.append((ticker, pe))
+                    continue
+
+                row = (
+                    ticker,
+                    self.compute_fiscal_year(pe),
+                    vals.get("diluted_eps"),
+                    vals.get("total_revenue"),
+                    vals.get("net_income"),
+                    vals.get("operating_income"),
+                    vals.get("stockholders_equity"),
+                    vals.get("total_assets"),
+                    vals.get("total_debt"),
+                    vals.get("current_assets"),
+                    vals.get("current_liabilities"),
+                    vals.get("operating_cash_flow"),
+                    vals.get("free_cash_flow"),
+                    vals.get("dividends_paid"),
+                    pe
+                )
+                rows.append(row)
+
+        with open("skipped_derived_metrics.log", "w") as f:
+            for t, pe in skipped:
+                f.write(f"{t},{pe}\n")
+
+        self.recreate_table()
+        self.insert_data(rows)
+        print(f"[INFO] Inserted: {len(rows)}, Skipped: {len(skipped)}")
+        return len(rows)
+
+    def compute_eps_cagr(self):
+        cur = self.conn.cursor()
+        cur.execute("SELECT ticker, fiscal_year, eps FROM derived_metrics WHERE eps IS NOT NULL")
+        rows = cur.fetchall()
+
+        eps_map = defaultdict(list)
+        for t, fy, eps in rows:
+            eps_map[t].append((fy, eps))
+
+        updates = []
+        for t, vals in eps_map.items():
+            vals.sort()
+            for i in range(2, len(vals)):
+                fy_now, eps_now = vals[i]
+                fy_old, eps_old = vals[i - 2]
+                try:
+                    if eps_now is not None and eps_old is not None and eps_now > 0 and eps_old > 0:
+                        cagr = (float(eps_now) / float(eps_old)) ** 0.5 - 1
+                    else:
+                        cagr = None
+                    updates.append((cagr, t, fy_now))
+                except Exception:
+                    continue
+
+        cur.executemany("""
+            UPDATE derived_metrics
+            SET eps_cagr_2y = %s, last_updated = CURRENT_TIMESTAMP
+            WHERE ticker = %s AND fiscal_year = %s
+        """, updates)
+        self.conn.commit()
+        cur.close()
+        print(f"[INFO] EPS CAGR updated: {len(updates)}")
+
+    def compute_target_pe(self):
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT ON (d.ticker, d.fiscal_year)
+                d.ticker, d.fiscal_year, d.period_ending,
+                v.ttm_eps, v.entry_price
+            FROM derived_metrics d
+            JOIN valuation_snapshots v ON d.ticker = v.ticker
+            WHERE d.target_pe IS NULL
+              AND v.ttm_eps > 0 AND v.entry_price > 0
+              AND v.as_of_date BETWEEN d.period_ending AND d.period_ending + INTERVAL '1 year'
+            ORDER BY d.ticker, d.fiscal_year, v.as_of_date
+        """)
+        rows = cur.fetchall()
+
+        updates = []
+        for t, fy, pe, eps, price in rows:
+            try:
+                updates.append((round(price / eps, 2), t, fy))
+            except ZeroDivisionError:
+                continue
+
+        cur.executemany("""
+            UPDATE derived_metrics
+            SET target_pe = %s, last_updated = CURRENT_TIMESTAMP
+            WHERE ticker = %s AND fiscal_year = %s
+        """, updates)
+        self.conn.commit()
+        cur.close()
+        print(f"[INFO] Target PE updated: {len(updates)}")
+
+    def run(self):
+        self.backup_table()
+        count = self.build_metrics()
+        if count > 0:
+            self.compute_eps_cagr()
+            self.compute_target_pe()
+        print("[OK] Pipeline complete")
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    pipeline = DerivedMetricsPipeline()
+    pipeline.run()

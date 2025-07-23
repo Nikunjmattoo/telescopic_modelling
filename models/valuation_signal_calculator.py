@@ -1,10 +1,10 @@
-
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta, date
 from typing import List, Optional, Tuple
 from tqdm import tqdm
 
+# Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 from db_utils import DatabaseConnection
 
@@ -32,12 +32,26 @@ class ValuationSignalCalculator:
             return [row[0] for row in cur.fetchall()]
 
     def get_valuation_inputs(self, ticker: str, as_of_date: date):
+        """
+        Get the most recent valuation snapshot for the given ticker on or before the given quarter end.
+        """
         with self.connection.cursor() as cur:
             cur.execute("""
                 SELECT vs.ttm_pe, vs.ttm_eps, dm.target_pe, dm.eps_cagr_2y
-                FROM valuation_snapshots vs
-                JOIN derived_metrics dm ON vs.ticker = dm.ticker AND vs.as_of_date = dm.period_ending
-                WHERE vs.ticker = %s AND vs.as_of_date = %s
+                FROM (
+                    SELECT *
+                    FROM valuation_snapshots
+                    WHERE ticker = %s AND as_of_date <= %s
+                    ORDER BY as_of_date DESC
+                    LIMIT 1
+                ) vs
+                JOIN LATERAL (
+                    SELECT *
+                    FROM derived_metrics dm
+                    WHERE dm.ticker = vs.ticker AND dm.period_ending <= vs.as_of_date
+                    ORDER BY dm.period_ending DESC
+                    LIMIT 1
+                ) dm ON true
             """, (ticker, as_of_date))
             return cur.fetchone()
 
@@ -77,9 +91,13 @@ class ValuationSignalCalculator:
             inputs = self.get_valuation_inputs(ticker, qend)
             if not inputs:
                 continue
+
             ttm_pe, ttm_eps, target_pe, eps_cagr = inputs
-            if None in [ttm_pe, target_pe]:
+
+            # Skip if essential values are missing
+            if ttm_pe is None or target_pe is None:
                 continue
+
             valuation_signal = (ttm_pe / target_pe) - 1
             avg_pe_1y = self.get_avg_pe_1y(ticker, qend)
             peg_ratio = (ttm_pe / eps_cagr) if eps_cagr and eps_cagr != 0 else None
@@ -108,7 +126,7 @@ class ValuationSignalCalculator:
                 count = self.process_ticker(ticker)
                 total += count
             except Exception as e:
-                print(f"Error processing {ticker}: {e}")
+                print(f"[ERROR] {ticker}: {e}")
         print(f"[OK] Completed. Total valuation signals saved: {total}")
 
 
